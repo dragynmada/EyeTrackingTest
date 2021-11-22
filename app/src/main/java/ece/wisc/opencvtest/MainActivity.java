@@ -39,8 +39,10 @@ import java.io.InputStream;
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
     private static final String TAG = "OCVSample::Activity";
+    // 4 element vector
     private static final Scalar FACE_RECT_COLOR = new Scalar(0, 255, 0, 255);
     public static final int JAVA_DETECTOR = 0;
+    // types of methods to interpret the data on
     private static final int TM_SQDIFF = 0;
     private static final int TM_SQDIFF_NORMED = 1;
     private static final int TM_CCOEFF = 2;
@@ -48,28 +50,32 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final int TM_CCORR = 4;
     private static final int TM_CCORR_NORMED = 5;
 
-
+    // while learn_frames is < 5, create a basic template to determine eye locations
     private int learn_frames = 0;
-    private Mat teplateR;
-    private Mat teplateL;
+    // templates we create for left and right eye
+    private Mat templateR;
+    private Mat templateL;
+    // the current method we use to interpret the data
     int method = 0;
 
+    // dropdown items for hamburger menu - Do we really need this?
     private MenuItem mItemFace50;
     private MenuItem mItemFace40;
     private MenuItem mItemFace30;
     private MenuItem mItemFace20;
     private MenuItem mItemType;
 
+    // see if we need the RGB channel, we only have IR greyscale images
     private Mat mRgba;
     private Mat mGray;
-    // matrix for zooming
+    // matrix for zooming - this would be good to improve so we can run PCCR on this zoomed image
     private Mat mZoomWindow;
     private Mat mZoomWindow2;
 
+    // cascade classifiers for eye/face detection
     private File mCascadeFile;
-    private CascadeClassifier mJavaDetector;
-    private CascadeClassifier mJavaDetectorEye;
-
+    private CascadeClassifier mJavaDetector; // face
+    private CascadeClassifier mJavaDetectorEye; // left eye
 
     private int mDetectorType = JAVA_DETECTOR;
     private String[] mDetectorName;
@@ -79,122 +85,30 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     private CameraBridgeViewBase mOpenCvCameraView;
 
+    // TODO used to determine method of calibration - we need to determine the best one and stick to it
     private SeekBar mMethodSeekbar;
     private TextView mValue;
 
     double xCenter = -1;
     double yCenter = -1;
 
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS: {
-                    Log.i(TAG, "OpenCV loaded successfully");
-
-                    try {
-                        // load cascade file from application resources
-                        InputStream is = getResources().openRawResource(
-                                R.raw.lbpcascade_frontalface);
-                        File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
-                        mCascadeFile = new File(cascadeDir,
-                                "lbpcascade_frontalface.xml");
-                        FileOutputStream os = new FileOutputStream(mCascadeFile);
-
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        while ((bytesRead = is.read(buffer)) != -1) {
-                            os.write(buffer, 0, bytesRead);
-                        }
-                        is.close();
-                        os.close();
-
-                        // --------------------------------- load left eye
-                        // classifier -----------------------------------
-                        InputStream iser = getResources().openRawResource(
-                                R.raw.haarcascade_lefteye_2splits);
-                        File cascadeDirER = getDir("cascadeER",
-                                Context.MODE_PRIVATE);
-                        File cascadeFileER = new File(cascadeDirER,
-                                "haarcascade_eye_right.xml");
-                        FileOutputStream oser = new FileOutputStream(cascadeFileER);
-
-                        byte[] bufferER = new byte[4096];
-                        int bytesReadER;
-                        while ((bytesReadER = iser.read(bufferER)) != -1) {
-                            oser.write(bufferER, 0, bytesReadER);
-                        }
-                        iser.close();
-                        oser.close();
-
-                        mJavaDetector = new CascadeClassifier(
-                                mCascadeFile.getAbsolutePath());
-                        if (mJavaDetector.empty()) {
-                            Log.e(TAG, "Failed to load cascade classifier");
-                            mJavaDetector = null;
-                        } else
-                            Log.i(TAG, "Loaded cascade classifier from "
-                                    + mCascadeFile.getAbsolutePath());
-
-                        mJavaDetectorEye = new CascadeClassifier(
-                                cascadeFileER.getAbsolutePath());
-                        if (mJavaDetectorEye.empty()) {
-                            Log.e(TAG, "Failed to load cascade classifier");
-                            mJavaDetectorEye = null;
-                        } else
-                            Log.i(TAG, "Loaded cascade classifier from "
-                                    + mCascadeFile.getAbsolutePath());
-
-                        cascadeDir.delete();
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        Log.e(TAG, "Failed to load cascade. Exception thrown: " + e);
-                    }
-                    if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) !=
-                        PackageManager.PERMISSION_GRANTED) {
-                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{
-                            Manifest.permission.CAMERA},
-                            101);
-                        return;
-                    }
-
-                    // Initialize IR camera
-                    mOpenCvCameraView.setCameraIndex(2);
-                    mOpenCvCameraView.enableView();
-
-                }
-                break;
-                default: {
-                    super.onManagerConnected(status);
-                }
-                break;
-            }
-        }
-    };
-
-    public MainActivity() {
-        mDetectorName = new String[2];
-        mDetectorName[JAVA_DETECTOR] = "Java";
-
-        Log.i(TAG, "Instantiated new " + this.getClass());
-    }
-
-    /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Log.i(TAG, "called onCreate");
         super.onCreate(savedInstanceState);
+        // don't let the screen timeout, we want the camera always visible
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        // use the XML for the face detect
+        // TODO if the phone is vertical, we should display a screen to say turn phone sideways
         setContentView(R.layout.face_detect_surface_view);
 
+        // get the OpenCV camera view
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.fd_activity_surface_view);
         mOpenCvCameraView.setCvCameraViewListener(this);
 
+        // TODO remove this and determine best method of finding face/eyes
         mMethodSeekbar = (SeekBar) findViewById(R.id.methodSeekBar);
         mValue = (TextView) findViewById(R.id.method);
-
         mMethodSeekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
             @Override
@@ -239,9 +153,119 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         });
     }
 
+    /* Callback function for the OpenCV Package Manager - creates the cascades for face and eye
+    detection and links them to the JavaDetectors */
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS: {
+                    Log.i(TAG, "OpenCV loaded successfully");
+
+                    try {
+                        // https://docs.opencv.org/3.4/db/d28/tutorial_cascade_classifier.html
+                        // load cascade file from application resources
+                        // Here we have two options - use the HAAR cascade or Local Binary Pattern
+                        // cascade for face detection. LBP performs faster, thus we use it
+                        // the lack of accuracy isn't bad for this, we really care about the eye
+                        // recognition, not so much face
+                        InputStream is = getResources().openRawResource(
+                                R.raw.lbpcascade_frontalface);
+                        File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
+                        mCascadeFile = new File(cascadeDir,
+                                "lbpcascade_frontalface.xml");
+                        FileOutputStream os = new FileOutputStream(mCascadeFile);
+
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = is.read(buffer)) != -1) {
+                            os.write(buffer, 0, bytesRead);
+                        }
+                        is.close();
+                        os.close();
+
+                        // load left eye classifier - both eyes have the same patterns
+                        // so to increase speed, just classify the left one
+                        // we use HAAR on this for the reasons above - accuracy matters in the eyes
+                        InputStream iser = getResources().openRawResource(
+                                R.raw.haarcascade_lefteye_2splits);
+                        File cascadeDirER = getDir("cascadeER",
+                                Context.MODE_PRIVATE);
+                        File cascadeFileER = new File(cascadeDirER,
+                                "haarcascade_eye_right.xml");
+                        FileOutputStream oser = new FileOutputStream(cascadeFileER);
+
+                        byte[] bufferER = new byte[4096];
+                        int bytesReadER;
+                        while ((bytesReadER = iser.read(bufferER)) != -1) {
+                            oser.write(bufferER, 0, bytesReadER);
+                        }
+                        iser.close();
+                        oser.close();
+
+                        // use LBP FR cascade and link it to the javaDectecor
+                        mJavaDetector = new CascadeClassifier(
+                                mCascadeFile.getAbsolutePath());
+                        if (mJavaDetector.empty()) {
+                            Log.e(TAG, "Failed to load cascade classifier");
+                            mJavaDetector = null;
+                        } else
+                            Log.i(TAG, "Loaded cascade classifier from "
+                                    + mCascadeFile.getAbsolutePath());
+
+                        // Link Haar ER cascade to javaDetector 2
+                        mJavaDetectorEye = new CascadeClassifier(
+                                cascadeFileER.getAbsolutePath());
+                        if (mJavaDetectorEye.empty()) {
+                            Log.e(TAG, "Failed to load cascade classifier");
+                            mJavaDetectorEye = null;
+                        } else
+                            Log.i(TAG, "Loaded cascade classifier from "
+                                    + mCascadeFile.getAbsolutePath());
+
+                        // We have the files in the directory properly linked, we no longer need the
+                        // directory
+                        cascadeDir.delete();
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        Log.e(TAG, "Failed to load cascade. Exception thrown: " + e);
+                    }
+
+                    // give camera permissions
+                    if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) !=
+                        PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{
+                            Manifest.permission.CAMERA},
+                            101);
+                        return;
+                    }
+
+                    // Initialize IR camera - You need to have JavaCamera2View to do this
+                    mOpenCvCameraView.setCameraIndex(2);
+                    mOpenCvCameraView.enableView();
+                }
+                break;
+
+                default: {
+                    super.onManagerConnected(status);
+                }
+                break;
+            }
+        }
+    };
+
+    public MainActivity() {
+        mDetectorName = new String[2];
+        mDetectorName[JAVA_DETECTOR] = "Java";
+
+        Log.i(TAG, "Instantiated new " + this.getClass());
+    }
+
     @Override
     public void onPause() {
         super.onPause();
+        // disable the cameraView while paused
         if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
     }
@@ -249,6 +273,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public void onResume() {
         super.onResume();
+        // statically link the package manager and the callback - previously done by Google Play
+        // but now we need to handle it to account for OpenCV3 vs OpenCV4
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this,
                 mLoaderCallback);
     }
@@ -258,13 +284,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         mOpenCvCameraView.disableView();
     }
 
+    /* Set up matrices for greyscale and RGB channels */
     public void onCameraViewStarted(int width, int height) {
         mGray = new Mat();
         mRgba = new Mat();
     }
 
+    /* Deallocate camera resources */
     public void onCameraViewStopped() {
-        mGray.release();
+        mGray.release(); // release() is OCV's version of free()
         mRgba.release();
         mZoomWindow.release();
         mZoomWindow2.release();
@@ -272,9 +300,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
+        // grab the color and greyscale channels of the frame captured
         mRgba = inputFrame.rgba();
         mGray = inputFrame.gray();
 
+        // calculate face size to pass into cascade
         if (mAbsoluteFaceSize == 0) {
             int height = mGray.rows();
             if (Math.round(height * mRelativeFaceSize) > 0) {
@@ -282,38 +312,45 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
 
+        // populate zoomed in eye windows
         if (mZoomWindow == null || mZoomWindow2 == null)
             CreateAuxiliaryMats();
 
         MatOfRect faces = new MatOfRect();
 
+        // detect the face based on the LBP cascade
         if (mJavaDetector != null)
             mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2,
-                    2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize),
-                    new Size());
+                2, new Size(mAbsoluteFaceSize, mAbsoluteFaceSize),
+                new Size());
+
 
         Rect[] facesArray = faces.toArray();
         for (int i = 0; i < facesArray.length; i++) {
+            /* draw the face rectangle
             Imgproc.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(),
                     FACE_RECT_COLOR, 3);
+             */
             xCenter = (facesArray[i].x + facesArray[i].width + facesArray[i].x) / 2;
             yCenter = (facesArray[i].y + facesArray[i].y + facesArray[i].height) / 2;
             Point center = new Point(xCenter, yCenter);
 
+            /* draw the center of the face - for debug purposes
             Imgproc.circle(mRgba, center, 10, new Scalar(255, 0, 0, 255), 3);
 
             Imgproc.putText(mRgba, "[" + center.x + "," + center.y + "]",
                     new Point(center.x + 20, center.y + 20),
                     Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255,
                             255));
+            */
 
             Rect r = facesArray[i];
+
             // compute the eye area
             Rect eyearea = new Rect(r.x + r.width / 8,
                     (int) (r.y + (r.height / 4.5)), r.width - 2 * r.width / 8,
                     (int) (r.height / 3.0));
-            // split it
+            // split it for left and right eye
             Rect eyearea_right = new Rect(r.x + r.width / 16,
                     (int) (r.y + (r.height / 4.5)),
                     (r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
@@ -321,25 +358,26 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                     + (r.width - 2 * r.width / 16) / 2,
                     (int) (r.y + (r.height / 4.5)),
                     (r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
-            // draw the area - mGray is working grayscale mat, if you want to
-            // see area in rgb preview, change mGray to mRgba
+
+            /* draw the eye rectangles
             Imgproc.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(),
                     new Scalar(255, 0, 0, 255), 2);
             Imgproc.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(),
                     new Scalar(255, 0, 0, 255), 2);
-
-            if (learn_frames < 5) {
-                teplateR = get_template(mJavaDetectorEye, eyearea_right, 24);
-                teplateL = get_template(mJavaDetectorEye, eyearea_left, 24);
+            */
+            if (learn_frames < 5) { // learn based on 5 frames of data
+                templateR = get_template(mJavaDetectorEye, eyearea_right, 24);
+                templateL = get_template(mJavaDetectorEye, eyearea_left, 24);
                 learn_frames++;
             } else {
                 // Learning finished, use the new templates for template
                 // matching
-                match_eye(eyearea_right, teplateR, method);
-                match_eye(eyearea_left, teplateL, method);
+                match_eye(eyearea_right, templateR, method);
+                match_eye(eyearea_left, templateL, method);
 
             }
 
+            // TODO - fix the zooms or delete them entirely
             // cut eye areas and put them to zoom windows
             Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2,
                     mZoomWindow2.size());
@@ -351,6 +389,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         return mRgba;
     }
 
+    /* TODO - get rid of this and determine a good face size */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         Log.i(TAG, "called onCreateOptionsMenu");
@@ -362,6 +401,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         return true;
     }
 
+    /* TODO - get rid of this and determine a good face size */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         Log.i(TAG, "called onOptionsItemSelected; selected item: " + item);
@@ -385,7 +425,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         mAbsoluteFaceSize = 0;
     }
 
-
+    /* Create Matrices for the left and right eye zoom images */
     private void CreateAuxiliaryMats() {
         if (mGray.empty())
             return;
@@ -402,17 +442,21 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     }
 
+    /* Locate the pupil within the eye */
+    /* TODO - put hough circles in here */
     private void match_eye(Rect area, Mat mTemplate, int type) {
         Point matchLoc;
         Mat mROI = mGray.submat(area);
         int result_cols = mROI.cols() - mTemplate.cols() + 1;
         int result_rows = mROI.rows() - mTemplate.rows() + 1;
+
         // Check for bad template size
         if (mTemplate.cols() == 0 || mTemplate.rows() == 0) {
             return ;
         }
         Mat mResult = new Mat(result_cols, result_rows, CvType.CV_8U);
 
+        // TODO - get rid of this and statically link a method
         switch (type) {
             case TM_SQDIFF:
                 Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_SQDIFF);
@@ -449,6 +493,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Point matchLoc_ty = new Point(matchLoc.x + mTemplate.cols() + area.x,
                 matchLoc.y + mTemplate.rows() + area.y);
 
+        // draw the box for the pupil
         Imgproc.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 255, 0,
                 255));
         Rect rec = new Rect(matchLoc_tx,matchLoc_ty);
@@ -456,6 +501,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     }
 
+    /* return the proper template based on the classifier */
     private Mat get_template(CascadeClassifier clasificator, Rect area, int size) {
         Mat template = new Mat();
         Mat mROI = mGray.submat(area);
