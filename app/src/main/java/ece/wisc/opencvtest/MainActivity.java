@@ -365,7 +365,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             Imgproc.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(),
                     new Scalar(255, 0, 0, 255), 2);
             */
-            if (learn_frames < 5) { // learn based on 5 frames of data
+            if (learn_frames < 10) { // learn based on 5 frames of data
                 templateR = get_template(mJavaDetectorEye, eyearea_right, 24);
                 templateL = get_template(mJavaDetectorEye, eyearea_left, 24);
                 learn_frames++;
@@ -446,13 +446,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     /* TODO - put hough circles in here */
     private void match_eye(Rect area, Mat mTemplate, int type) {
         Point matchLoc;
+        // this is our image to search
         Mat mROI = mGray.submat(area);
         int result_cols = mROI.cols() - mTemplate.cols() + 1;
         int result_rows = mROI.rows() - mTemplate.rows() + 1;
 
         // Check for bad template size
         if (mTemplate.cols() == 0 || mTemplate.rows() == 0) {
-            return ;
+            return;
         }
         Mat mResult = new Mat(result_cols, result_rows, CvType.CV_8U);
 
@@ -462,22 +463,19 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_SQDIFF);
                 break;
             case TM_SQDIFF_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult,
-                        Imgproc.TM_SQDIFF_NORMED);
+                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_SQDIFF_NORMED);
                 break;
             case TM_CCOEFF:
                 Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF);
                 break;
             case TM_CCOEFF_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult,
-                        Imgproc.TM_CCOEFF_NORMED);
+                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF_NORMED);
                 break;
             case TM_CCORR:
                 Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCORR);
                 break;
             case TM_CCORR_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult,
-                        Imgproc.TM_CCORR_NORMED);
+                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCORR_NORMED);
                 break;
         }
 
@@ -489,16 +487,35 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             matchLoc = mmres.maxLoc;
         }
 
+        // get the two corners of the pupil
         Point matchLoc_tx = new Point(matchLoc.x + area.x, matchLoc.y + area.y);
         Point matchLoc_ty = new Point(matchLoc.x + mTemplate.cols() + area.x,
                 matchLoc.y + mTemplate.rows() + area.y);
 
-        // draw the box for the pupil
-        Imgproc.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 255, 0,
-                255));
+        // draw box for the pupil
+        Imgproc.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 0, 0, 255));
         Rect rec = new Rect(matchLoc_tx,matchLoc_ty);
 
+        // compute precise pupil and CR locations
+        Mat houghResult = new Mat();
+        // TODO - tweak the numerical parameters
+        Imgproc.HoughCircles(mROI, houghResult, Imgproc.CV_HOUGH_GRADIENT, 1, 1, 80, 10, 1, 5);
 
+        if (houghResult.cols() > 0) {
+            for (int x = 0; x < Math.min(houghResult.cols(), 5); x++) {
+                double circleVec[] = houghResult.get(0, x);
+
+                if (circleVec == null)
+                    break;
+
+                Point center = new Point((int) circleVec[0] + area.x, (int) circleVec[1] + area.y);
+                int radius = (int) circleVec[2];
+
+                Log.i("HoughCircles", "center.x = " + center.x + " center.y = " + center.y);
+
+                Imgproc.circle(mRgba, center, radius, new Scalar(255, 255, 255), 1);
+            }
+        }
     }
 
     /* return the proper template based on the classifier */
