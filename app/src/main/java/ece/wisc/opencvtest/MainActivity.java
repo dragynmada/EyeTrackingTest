@@ -5,6 +5,7 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -560,5 +561,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     public void onRecreateClick(View v)
     {
         learn_frames = 0;
+    }
+
+    public void CalibrateDirection(View view) {
+        Intent i = new Intent(getApplicationContext(),Calibration.class);
+        startActivity(i);
     }
 }

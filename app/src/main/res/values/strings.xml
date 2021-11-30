@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">OCV Face Detection</string>
     <string name="recreate_button">Calibrate Eye Detect</string>
+    <string name="calibrate_button">Calibrate Gaze Location</string>
+    <string name="accept_button">Continue</string>
 </resources>

@@ -1,5 +1,6 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rel_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
@@ -9,12 +10,15 @@
         android:layout_height="fill_parent" />
 
     <Button
+        android:id="@+id/cal_eye_detect"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
-        android:layout_centerVertical="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="40dp"
         android:onClick="onRecreateClick"
-        android:text="@string/recreate_button" />
+        android:text="@string/recreate_button"
+        android:maxWidth="180dp" />
 
     <TextView
         android:id="@+id/method"
@@ -34,16 +38,27 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal" >
 
-        <SeekBar
-            android:id="@+id/methodSeekBar"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:max="5"
-            android:paddingLeft="5dip"
-            android:paddingRight="10dip"
-            android:progress="500" >
-        </SeekBar>
-
     </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/methodSeekBar"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:max="5"
+        android:paddingLeft="5dip"
+        android:paddingRight="10dip"
+        android:progress="500"></SeekBar>
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:maxWidth="180dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="40dp"
+        android:layout_alignRight="@+id/cal_eye_detect"
+        android:text="@string/calibrate_button"
+        android:onClick="CalibrateDirection"
+        />
 
 </RelativeLayout>
