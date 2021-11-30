@@ -44,12 +44,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final Scalar FACE_RECT_COLOR = new Scalar(0, 255, 0, 255);
     public static final int JAVA_DETECTOR = 0;
     // types of methods to interpret the data on
-    private static final int TM_SQDIFF = 0;
-    private static final int TM_SQDIFF_NORMED = 1;
-    private static final int TM_CCOEFF = 2;
     private static final int TM_CCOEFF_NORMED = 3;
-    private static final int TM_CCORR = 4;
-    private static final int TM_CCORR_NORMED = 5;
 
     // while learn_frames is < 5, create a basic template to determine eye locations
     private int learn_frames = 0;
@@ -86,10 +81,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     private CameraBridgeViewBase mOpenCvCameraView;
 
-    // TODO used to determine method of calibration - we need to determine the best one and stick to it
-    private SeekBar mMethodSeekbar;
-    private TextView mValue;
-
     double xCenter = -1;
     double yCenter = -1;
 
@@ -107,51 +98,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.fd_activity_surface_view);
         mOpenCvCameraView.setCvCameraViewListener(this);
 
-        // TODO remove this and determine best method of finding face/eyes
-        mMethodSeekbar = (SeekBar) findViewById(R.id.methodSeekBar);
-        mValue = (TextView) findViewById(R.id.method);
-        mMethodSeekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        // corresponds to COEFF_NORMED
+        method = 3;
 
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress,
-                                          boolean fromUser) {
-                method = progress;
-                switch (method) {
-                    case 0:
-                        mValue.setText("TM_SQDIFF");
-                        break;
-                    case 1:
-                        mValue.setText("TM_SQDIFF_NORMED");
-                        break;
-                    case 2:
-                        mValue.setText("TM_CCOEFF");
-                        break;
-                    case 3:
-                        mValue.setText("TM_CCOEFF_NORMED");
-                        break;
-                    case 4:
-                        mValue.setText("TM_CCORR");
-                        break;
-                    case 5:
-                        mValue.setText("TM_CCORR_NORMED");
-                        break;
-                }
-
-
-            }
-        });
+        // set the face size to 40% of normal (determined from testing, good size)
+        setMinFaceSize(0.4f);
     }
 
     /* Callback function for the OpenCV Package Manager - creates the cascades for face and eye
@@ -377,48 +328,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 match_eye(eyearea_left, templateL, method);
 
             }
-
-            // TODO - fix the zooms or delete them entirely
-            // cut eye areas and put them to zoom windows
-            Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2,
-                    mZoomWindow2.size());
-            Imgproc.resize(mRgba.submat(eyearea_right), mZoomWindow,
-                    mZoomWindow.size());
-
         }
 
         return mRgba;
-    }
-
-    /* TODO - get rid of this and determine a good face size */
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        Log.i(TAG, "called onCreateOptionsMenu");
-        mItemFace50 = menu.add("Face size 50%");
-        mItemFace40 = menu.add("Face size 40%");
-        mItemFace30 = menu.add("Face size 30%");
-        mItemFace20 = menu.add("Face size 20%");
-        mItemType = menu.add(mDetectorName[mDetectorType]);
-        return true;
-    }
-
-    /* TODO - get rid of this and determine a good face size */
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        Log.i(TAG, "called onOptionsItemSelected; selected item: " + item);
-        if (item == mItemFace50)
-            setMinFaceSize(0.5f);
-        else if (item == mItemFace40)
-            setMinFaceSize(0.4f);
-        else if (item == mItemFace30)
-            setMinFaceSize(0.3f);
-        else if (item == mItemFace20)
-            setMinFaceSize(0.2f);
-        else if (item == mItemType) {
-            int tmpDetectorType = (mDetectorType + 1) % mDetectorName.length;
-            item.setTitle(mDetectorName[tmpDetectorType]);
-        }
-        return true;
     }
 
     private void setMinFaceSize(float faceSize) {
@@ -444,7 +356,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     /* Locate the pupil within the eye */
-    /* TODO - put hough circles in here */
     private void match_eye(Rect area, Mat mTemplate, int type) {
         Point matchLoc;
         // this is our image to search
@@ -458,35 +369,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
         Mat mResult = new Mat(result_cols, result_rows, CvType.CV_8U);
 
-        // TODO - get rid of this and statically link a method
-        switch (type) {
-            case TM_SQDIFF:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_SQDIFF);
-                break;
-            case TM_SQDIFF_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_SQDIFF_NORMED);
-                break;
-            case TM_CCOEFF:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF);
-                break;
-            case TM_CCOEFF_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF_NORMED);
-                break;
-            case TM_CCORR:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCORR);
-                break;
-            case TM_CCORR_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCORR_NORMED);
-                break;
-        }
+        Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF_NORMED);
 
         Core.MinMaxLocResult mmres = Core.minMaxLoc(mResult);
-        // there is difference in matching methods - best match is max/min value
-        if (type == TM_SQDIFF || type == TM_SQDIFF_NORMED) {
-            matchLoc = mmres.minLoc;
-        } else {
-            matchLoc = mmres.maxLoc;
-        }
+        matchLoc = mmres.maxLoc;
 
         // get the two corners of the pupil
         Point matchLoc_tx = new Point(matchLoc.x + area.x, matchLoc.y + area.y);
@@ -497,9 +383,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Imgproc.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 0, 0, 255));
         Rect rec = new Rect(matchLoc_tx,matchLoc_ty);
 
+        /*
         // compute precise pupil and CR locations
         Mat houghResult = new Mat();
-        // TODO - tweak the numerical parameters
+
+        // TODO - tweak the numerical parameters?
         Imgproc.HoughCircles(mROI, houghResult, Imgproc.CV_HOUGH_GRADIENT, 1, 1, 80, 10, 1, 5);
 
         if (houghResult.cols() > 0) {
@@ -517,6 +405,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 Imgproc.circle(mRgba, center, radius, new Scalar(255, 255, 255), 1);
             }
         }
+        */
     }
 
     /* return the proper template based on the classifier */
@@ -564,7 +453,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     public void CalibrateDirection(View view) {
-        Intent i = new Intent(getApplicationContext(),Calibration.class);
+        Intent i = new Intent(getApplicationContext(), Calibration.class);
         startActivity(i);
     }
 }

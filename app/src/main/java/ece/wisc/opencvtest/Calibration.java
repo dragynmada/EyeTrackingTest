@@ -4,6 +4,7 @@ import static java.lang.Thread.sleep;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -68,8 +69,15 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
     // the current method we use to interpret the data
     int method = 0;
 
+    // center of the face
     double xCenter = -1;
     double yCenter = -1;
+    // center of the eye
+    double xEyeCenter = -1;
+    double yEyeCenter = -1;
+
+    // used to store the offsets for eye to
+    public double[][] offsets = new double[4][2];
 
     // cascade classifiers for eye/face detection
     private File mCascadeFile;
@@ -81,6 +89,16 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
 
     public static final int JAVA_DETECTOR = 0;
     private CameraBridgeViewBase mOpenCvCameraView;
+
+    private String[] instructionTexts = {
+            "Look at the bottom left of your device and press \"Calibrate Eye Detect\". Make " +
+                    "sure your keep your head stable. If you see a red box around your left eye," +
+                    " press the Continue button.",
+            "Look at the top left of your computer screen, keeping your head still.",
+            "Look at the top right of your computer screen, keeping your head still.",
+            "Look at the bottom left of your computer screen, keeping your head still.",
+            "Look at the bottom right of your computer screen, keeping your head still.",
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,40 +116,64 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
         startButton = (Button)findViewById(R.id.button2);
         final TextView instructions = findViewById(R.id.instructions);
 
-        instructions.setText("Look at the bottom left of your device and press \"Calibrate Eye Detect\". Make sure yo keep your head stable. If you see a red box around your left eye, press the Continue button.");
+        instructions.setText(instructionTexts[0]);
+
+        method = 3;
+        setMinFaceSize(0.4f);
 
         startButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                    startButton.setVisibility(View.INVISIBLE);
                     new Thread(new Runnable() {
                         public void run() {
-                            Calibration.this.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    instructions.setText("Look at the top left of your computer screen, keeping your head still.");
-                                }
-                            });
-
-                            try {
-                                Thread.sleep(3000);
-                            } catch (Exception e) {
-
-                            }
-
-                            for (int i = 3 ; i > 0; i--) {
+                            for (int i = 0; i < 4; i++) {
                                 int finalI = i;
                                 Calibration.this.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        instructions.setText(String.valueOf(finalI));
+                                        instructions.setText(instructionTexts[finalI + 1]);
                                     }
                                 });
 
                                 try {
-                                    Thread.sleep(1000);
+                                    Thread.sleep(3000);
                                 } catch (Exception e) {
 
                                 }
+
+                                for (int j = 3; j > 0; j--) {
+                                    int finalJ = j;
+                                    Calibration.this.runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            instructions.setText(String.valueOf(finalJ));
+                                        }
+                                    });
+
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (Exception e) {
+
+                                    }
+                                }
+
+                                // TODO - average these results over many pictures
+                                offsets[i][0] = xEyeCenter - xCenter;
+                                offsets[i][1] = yCenter - yEyeCenter;
                             }
+
+                            Log.i("TestOffsets", "offsets[0][0] = " + offsets[0][0] +
+                                    " offsets[0][1] = " + offsets[0][1] +
+                                    " offsets[1][0] = " + offsets[1][0] +
+                                    " offsets[1][1] = " + offsets[1][1] +
+                                    " offsets[2][0] = " + offsets[2][0] +
+                                    " offsets[2][1] = " + offsets[2][1] +
+                                    " offsets[3][0] = " + offsets[3][0] +
+                                    " offsets[4][1] = " + offsets[3][1]
+                            );
+
+                            Intent i = new Intent(getApplicationContext(), MainActivity.class);
+                            startActivity(i);
                         }
                     }).start();
             }
@@ -218,14 +260,13 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
             yCenter = (facesArray[i].y + facesArray[i].y + facesArray[i].height) / 2;
             Point center = new Point(xCenter, yCenter);
 
-            /* draw the center of the face - for debug purposes
+            // draw the center of the face - for debug purposes
             Imgproc.circle(mRgba, center, 10, new Scalar(255, 0, 0, 255), 3);
 
             Imgproc.putText(mRgba, "[" + center.x + "," + center.y + "]",
                     new Point(center.x + 20, center.y + 20),
                     Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255,
                             255));
-            */
 
             Rect r = facesArray[i];
 
@@ -259,14 +300,6 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
                 match_eye(eyearea_left, templateL, method);
 
             }
-
-            // TODO - fix the zooms or delete them entirely
-            // cut eye areas and put them to zoom windows
-            Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2,
-                    mZoomWindow2.size());
-            Imgproc.resize(mRgba.submat(eyearea_right), mZoomWindow,
-                    mZoomWindow.size());
-
         }
 
         return mRgba;
@@ -341,34 +374,16 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
         }
         Mat mResult = new Mat(result_cols, result_rows, CvType.CV_8U);
 
-        // TODO - get rid of this and statically link a method
-        switch (type) {
-            case TM_SQDIFF:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_SQDIFF);
-                break;
-            case TM_SQDIFF_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_SQDIFF_NORMED);
-                break;
-            case TM_CCOEFF:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF);
-                break;
-            case TM_CCOEFF_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF_NORMED);
-                break;
-            case TM_CCORR:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCORR);
-                break;
-            case TM_CCORR_NORMED:
-                Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCORR_NORMED);
-                break;
-        }
+        Imgproc.matchTemplate(mROI, mTemplate, mResult, Imgproc.TM_CCOEFF_NORMED);
 
         Core.MinMaxLocResult mmres = Core.minMaxLoc(mResult);
-        // there is difference in matching methods - best match is max/min value
-        if (type == TM_SQDIFF || type == TM_SQDIFF_NORMED) {
-            matchLoc = mmres.minLoc;
-        } else {
-            matchLoc = mmres.maxLoc;
+        matchLoc = mmres.maxLoc;
+
+        // used for center of the eye - only use for left eye since our classifier is made for
+        // the left eye
+        if (matchLoc.x + area.x > xCenter) {
+            xEyeCenter = matchLoc.x + area.x + (mTemplate.cols() / 2);
+            yEyeCenter = matchLoc.y + area.y + (mTemplate.rows() / 2);
         }
 
         // get the two corners of the pupil
@@ -380,6 +395,7 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
         Imgproc.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 0, 0, 255));
         Rect rec = new Rect(matchLoc_tx,matchLoc_ty);
 
+        /*
         // compute precise pupil and CR locations
         Mat houghResult = new Mat();
         // TODO - tweak the numerical parameters
@@ -400,6 +416,7 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
                 Imgproc.circle(mRgba, center, radius, new Scalar(255, 255, 255), 1);
             }
         }
+        */
     }
 
     public void onRecreateClick(View v)
@@ -510,4 +527,8 @@ public class Calibration  extends AppCompatActivity implements CameraBridgeViewB
         }
     };
 
+    private void setMinFaceSize(float faceSize) {
+        mRelativeFaceSize = faceSize;
+        mAbsoluteFaceSize = 0;
+    }
 }

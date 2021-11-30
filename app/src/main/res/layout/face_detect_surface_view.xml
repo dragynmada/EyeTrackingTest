@@ -20,35 +20,6 @@
         android:text="@string/recreate_button"
         android:maxWidth="180dp" />
 
-    <TextView
-        android:id="@+id/method"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/seekbars"
-        android:layout_alignParentLeft="true"
-        android:layout_margin="5dp"
-        android:text="method"
-        android:textColor="@android:color/white"
-        android:textSize="10sp" />
-
-    <LinearLayout
-        android:id="@+id/seekbars"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal" >
-
-    </LinearLayout>
-
-    <SeekBar
-        android:id="@+id/methodSeekBar"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:max="5"
-        android:paddingLeft="5dip"
-        android:paddingRight="10dip"
-        android:progress="500"></SeekBar>
-
     <Button
         android:id="@+id/button"
         android:layout_width="wrap_content"
