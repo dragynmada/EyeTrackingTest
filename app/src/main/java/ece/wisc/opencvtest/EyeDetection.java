@@ -1,11 +1,14 @@
 package ece.wisc.opencvtest;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.util.Log;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -301,6 +304,10 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
 
         Core.MinMaxLocResult mmres = Core.minMaxLoc(mResult);
         matchLoc = mmres.maxLoc;
+
+        // only grabbing the left eye now
+        xEyeCenter = matchLoc.x + area.x + (mTemplate.cols() / 2);
+        yEyeCenter = matchLoc.y + area.y + (mTemplate.rows() / 2);
 
         // get the two corners of the pupil
         Point matchLoc_tx = new Point(matchLoc.x + area.x, matchLoc.y + area.y);

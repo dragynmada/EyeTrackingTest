@@ -47,8 +47,6 @@ public class MainActivity extends AppCompatActivity {
         // TODO if the phone is vertical, we should display a screen to say turn phone sideways
         setContentView(R.layout.face_detect_surface_view);
 
-        eyeDetect = new EyeDetection(MainActivity.this, findViewById(R.id.fd_activity_surface_view));
-
         // Camera Permission requests
         if (ActivityCompat.checkSelfPermission(MainActivity.this,
                 Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -57,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
                     101);
             return;
         }
+
+        eyeDetect = new EyeDetection(MainActivity.this, findViewById(R.id.fd_activity_surface_view));
     }
 
     @Override
