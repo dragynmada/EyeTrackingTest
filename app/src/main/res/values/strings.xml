@@ -4,4 +4,6 @@
     <string name="recreate_button">Calibrate Eye Detect</string>
     <string name="calibrate_button">Calibrate Gaze Location</string>
     <string name="accept_button">Continue</string>
+    <string name="normal_camera">Switch to Normal (Experimental)</string>
+    <string name="ir_camera">Switch to IR</string>
 </resources>

@@ -1,19 +1,12 @@
 package ece.wisc.opencvtest;
 
-import android.Manifest;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.hardware.Camera;
 import android.util.Log;
 import android.view.View;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -34,9 +27,6 @@ import java.io.InputStream;
 public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 {
     private static final String TAG = "iTrakr_Main";
 
-    // 4 element vector representing RGB and Opacity
-    private static final int JAVA_DETECTOR = 0;
-
     // type of method to interpret the data on
     private static final int TM_CCOEFF_NORMED = 3;
 
@@ -48,7 +38,7 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
     private Mat templateL;
 
     // the current method we use to interpret the data
-    int method = 0;
+    int method;
 
     // see if we need the RGB channel, we only have IR greyscale images
     public Mat mRGB;
@@ -72,7 +62,9 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
 
     private Context context;
 
-    public EyeDetection(Context context, CameraBridgeViewBase mOpenCvCameraView) {
+    private final int cameraID;
+
+    public EyeDetection(Context context, CameraBridgeViewBase mOpenCvCameraView, int cameraID) {
         this.context = context;
 
         // get the OpenCV camera view
@@ -81,12 +73,14 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
 
         method = TM_CCOEFF_NORMED;
 
+        this.cameraID = cameraID;
+
         // set the face size to 40% of normal (determined from testing, good size)
         setFaceSize(0.4f);
     }
 
     /* Callback function for the OpenCV Package Manager - creates the cascades for face and eye
-    detection and links them to the JavaDetectors */
+        detection and links them to the JavaDetectors */
     public BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(context) {
         @Override
         public void onManagerConnected(int status) {
@@ -173,7 +167,7 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                     /*TODO - add button to change between IR and Normal camera. We have increased
                      * resolution with the regular cameras which may prove better in testing
                      */
-                    mOpenCvCameraView.setCameraIndex(2);
+                    mOpenCvCameraView.setCameraIndex(cameraID);
                     mOpenCvCameraView.enableView();
                     break;
                 }
@@ -221,6 +215,7 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                     2, new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
 
         Rect[] facesArray = faces.toArray();
+        // included in OpenCV examples even though this doesn't loop?
         for (int i = 0; i < facesArray.length; i++) {
             /* draw the face rectangle - debug only
             Imgproc.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(),
@@ -264,13 +259,13 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                     new Scalar(255, 0, 0, 255), 2);
             */
 
-            if (learnFrames < 10) { // learn based on 10 frames of data
+            if (learnFrames < 20) { // learn based on 10 frames of data
                 // templateR = getTemplate(mJavaDetectorEye, eyeAreaRight, 24);
                 templateL = getTemplate(mJavaDetectorEye, eyeAreaLeft, 24);
                 learnFrames++;
             } else {
                 // Learning finished, use the new templates for template matching
-                // match_eye(eyeAreaRight, templateR, method); - if needed in the future,
+                // locateEye(eyeAreaRight, templateR, method); - if needed in the future,
                 // we can re-add the right eye. All calculations are based off of the left eye
                 // since we specifically have a left eye classifier
                 locateEye(eyeAreaLeft, templateL, method);

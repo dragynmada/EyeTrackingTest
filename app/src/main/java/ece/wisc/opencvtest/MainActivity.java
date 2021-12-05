@@ -4,38 +4,30 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.JavaCamera2View;
+import org.opencv.android.JavaCameraView;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfRect;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.CascadeClassifier;
-import org.opencv.objdetect.Objdetect;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity {
 
-    EyeDetection eyeDetect;
+    public EyeDetection eyeDetect;
+
+    private Button switchIRButton;
+
+    private Button switchNormButton;
+
+    private JavaCameraView normalCamera;
+    private JavaCamera2View irCamera;
+
+    private int cameraID;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -43,20 +35,45 @@ public class MainActivity extends AppCompatActivity {
         // don't let the screen timeout, we want the camera always visible
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // use the XML for the face detect
+        // change view for custom XML file
         // TODO if the phone is vertical, we should display a screen to say turn phone sideways
         setContentView(R.layout.face_detect_surface_view);
 
         // Camera Permission requests
-        if (ActivityCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{
-                            Manifest.permission.CAMERA},
-                    101);
+        if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new
+                    String[]{Manifest.permission.CAMERA}, 101);
             return;
         }
 
-        eyeDetect = new EyeDetection(MainActivity.this, findViewById(R.id.fd_activity_surface_view));
+        switchIRButton = findViewById(R.id.irCameraButton);
+        switchNormButton = findViewById(R.id.normalCameraButton);
+
+        normalCamera = findViewById(R.id.cameraViewNorm);
+        irCamera = findViewById(R.id.cameraViewIR);
+
+        this.cameraID = 2;
+
+        Bundle extras = getIntent().getExtras();
+        if (extras != null) {
+            this.cameraID = (int) extras.get("cameraID");
+            if (this.cameraID == 1) {
+                eyeDetect = new EyeDetection(this, normalCamera, this.cameraID);
+            } else {
+                eyeDetect = new EyeDetection(this, irCamera, this.cameraID);
+            }
+        } else {
+            eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2);
+        }
+
+        if (this.cameraID == 2) {
+            switchNormButton.setVisibility(View.VISIBLE);
+            switchIRButton.setVisibility(View.INVISIBLE);
+        } else {
+            switchNormButton.setVisibility(View.INVISIBLE);
+            switchIRButton.setVisibility(View.VISIBLE);
+        }
     }
 
     @Override
@@ -84,10 +101,37 @@ public class MainActivity extends AppCompatActivity {
 
     public void calibrateGaze(View view) {
         Intent i = new Intent(getApplicationContext(), Calibration.class);
+        i.putExtra("cameraID", cameraID);
         startActivity(i);
     }
 
     public void relearnFace(View view) {
         eyeDetect.relearnFace(view);
+    }
+
+    public void switchIR(View view) {
+        switchNormButton.setVisibility(View.VISIBLE);
+        switchIRButton.setVisibility(View.INVISIBLE);
+        irCamera.setVisibility(View.VISIBLE);
+        normalCamera.setVisibility(View.INVISIBLE);
+        eyeDetect.mOpenCvCameraView.disableView();
+        eyeDetect.mOpenCvCameraView = irCamera;
+        eyeDetect.mOpenCvCameraView.setCvCameraViewListener(eyeDetect);
+        eyeDetect.mOpenCvCameraView.setCameraIndex(2);
+        eyeDetect.mOpenCvCameraView.enableView();
+        cameraID = 2;
+    }
+
+    public void switchNorm(View view) {
+        switchNormButton.setVisibility(View.INVISIBLE);
+        switchIRButton.setVisibility(View.VISIBLE);
+        irCamera.setVisibility(View.INVISIBLE);
+        normalCamera.setVisibility(View.VISIBLE);
+        eyeDetect.mOpenCvCameraView.disableView();
+        eyeDetect.mOpenCvCameraView = normalCamera;
+        eyeDetect.mOpenCvCameraView.setCvCameraViewListener(eyeDetect);
+        eyeDetect.mOpenCvCameraView.setCameraIndex(1);
+        eyeDetect.mOpenCvCameraView.enableView();
+        cameraID = 1;
     }
 }

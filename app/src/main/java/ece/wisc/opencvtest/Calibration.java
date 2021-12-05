@@ -26,6 +26,8 @@ public class Calibration extends AppCompatActivity {
 
     private EyeDetection eyeDetection;
 
+    private int cameraID;
+
     private String[] instructionTexts = {
             "Look at the bottom left of your device and press \"Calibrate Eye Detect\". Make " +
                     "sure your keep your head stable. If you see a red box around your left eye," +
@@ -51,7 +53,17 @@ public class Calibration extends AppCompatActivity {
 
         setContentView(R.layout.calibration_page);
 
-        eyeDetection = new EyeDetection(this, findViewById(R.id.cal_eye_direction));
+        Bundle extras = getIntent().getExtras();
+        if (extras != null) {
+            this.cameraID = (int) extras.get("cameraID");
+            if (cameraID == 2) {
+                eyeDetection = new EyeDetection(this,
+                        findViewById(R.id.calViewNorm), cameraID);
+            } else {
+                eyeDetection = new EyeDetection(this,
+                        findViewById(R.id.calViewIR), cameraID);
+            }
+        }
 
         offsets = new double[4][2];
 
@@ -133,6 +145,7 @@ public class Calibration extends AppCompatActivity {
                             );
 
                             Intent i = new Intent(getApplicationContext(), MainActivity.class);
+                            i.putExtra("cameraID", cameraID);
                             startActivity(i);
                         }
                     }).start();

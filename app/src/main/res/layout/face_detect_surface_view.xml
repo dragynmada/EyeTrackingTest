@@ -5,12 +5,17 @@
     android:layout_height="match_parent" >
 
     <org.opencv.android.JavaCamera2View
-        android:id="@+id/fd_activity_surface_view"
+        android:id="@+id/cameraViewIR"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+
+    <org.opencv.android.JavaCameraView
+        android:id="@+id/cameraViewNorm"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" />
 
     <Button
-        android:id="@+id/cal_eye_detect"
+        android:id="@+id/calEyeDetect"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
@@ -21,15 +26,36 @@
         android:maxWidth="180dp" />
 
     <Button
-        android:id="@+id/button"
+        android:id="@+id/calibrateButton"
         android:layout_width="wrap_content"
         android:maxWidth="180dp"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_marginTop="40dp"
-        android:layout_alignRight="@+id/cal_eye_detect"
+        android:layout_alignRight="@+id/calEyeDetect"
         android:text="@string/calibrate_button"
         android:onClick="calibrateGaze"
+        />
+
+    <Button
+        android:id="@+id/normalCameraButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="180dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="40dp"
+        android:text="@string/normal_camera"
+        android:onClick="switchNorm"
+        />
+
+    <Button
+        android:id="@+id/irCameraButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="40dp"
+        android:text="@string/ir_camera"
+        android:onClick="switchIR"
         />
 
 </RelativeLayout>
