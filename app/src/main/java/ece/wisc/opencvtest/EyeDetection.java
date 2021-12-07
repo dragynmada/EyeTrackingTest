@@ -377,6 +377,16 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                 resultPoint[0] = resultMatrix[0][0] / resultMatrix[0][2] * 1920;
                 resultPoint[1] = resultMatrix[0][1] / resultMatrix[0][2] * 1080;
 
+                // keep within the bounds of the screen
+                if (resultPoint[0] < 0)
+                    resultPoint[0] = 0;
+                if (resultPoint[0] > 1920)
+                    resultPoint[0] = 1920;
+                if (resultPoint[1] < 0)
+                    resultPoint[1] = 0;
+                if (resultPoint[1] > 1080)
+                    resultPoint[1] = 1080;
+
                 Log.i("CursorPosition", "X = " + resultPoint[0] + " Y = " + resultPoint[1]);
 
                 averageI = 0;

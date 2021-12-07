@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 
 import java.util.ArrayList;
@@ -196,10 +197,13 @@ public class Calibration extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-        // statically link the package manager and the callback - previously done by Google Play
-        // but now we need to handle it to account for OpenCV3 vs OpenCV4
-        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this,
-                eyeDetection.mLoaderCallback);
+        if (!OpenCVLoader.initDebug())
+            // statically link the package manager and the callback - previously done by Google Play
+            // but now we need to handle it to account for OpenCV3 vs OpenCV4
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this,
+                    eyeDetection.mLoaderCallback);
+        else
+            eyeDetection.mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
     }
 
     public void onDestroy() {

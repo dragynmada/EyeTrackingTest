@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -14,6 +15,7 @@ import android.widget.Button;
 
 import org.opencv.android.JavaCamera2View;
 import org.opencv.android.JavaCameraView;
+import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 
 public class MainActivity extends AppCompatActivity {
@@ -87,10 +89,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-        // statically link the package manager and the callback - previously done by Google Play
-        // but now we need to handle it to account for OpenCV3 vs OpenCV4
-        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this,
-                eyeDetect.mLoaderCallback);
+        if (!OpenCVLoader.initDebug())
+            // statically link the package manager and the callback - previously done by Google Play
+            // but now we need to handle it to account for OpenCV3 vs OpenCV4
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this,
+                    eyeDetect.mLoaderCallback);
+        else
+            eyeDetect.mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
     }
 
     public void onDestroy() {
