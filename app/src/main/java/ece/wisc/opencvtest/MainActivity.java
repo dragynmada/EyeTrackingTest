@@ -58,14 +58,14 @@ public class MainActivity extends AppCompatActivity {
         Bundle extras = getIntent().getExtras();
         if (extras != null) {
             this.cameraID = (int) extras.get("cameraID");
-            if (this.cameraID == 1) {
+            if (this.cameraID == 1)
                 eyeDetect = new EyeDetection(this, normalCamera, this.cameraID);
-            } else {
+            else
                 eyeDetect = new EyeDetection(this, irCamera, this.cameraID);
-            }
-        } else {
+            // send over the coordinates of corners
+            eyeDetect.setOffsets((double[][]) extras.get("offsets"));
+        } else // always default to IR camera
             eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2);
-        }
 
         if (this.cameraID == 2) {
             switchNormButton.setVisibility(View.VISIBLE);

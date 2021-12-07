@@ -22,7 +22,7 @@ public class Calibration extends AppCompatActivity {
     private Button eyeDetectButton;
 
     // used to store the offsets for eye to
-    public double[][] offsets;
+    private double[][] offsets;
 
     private EyeDetection eyeDetection;
 
@@ -146,6 +146,7 @@ public class Calibration extends AppCompatActivity {
 
                             Intent i = new Intent(getApplicationContext(), MainActivity.class);
                             i.putExtra("cameraID", cameraID);
+                            i.putExtra("offsets", offsets);
                             startActivity(i);
                         }
                     }).start();

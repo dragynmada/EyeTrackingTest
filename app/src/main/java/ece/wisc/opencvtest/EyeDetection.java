@@ -30,7 +30,7 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
     // type of method to interpret the data on
     private static final int TM_CCOEFF_NORMED = 3;
 
-    // while learn_frames is < 5, create a basic template to determine eye locations
+    // while learn_frames is < X, create a basic template to determine eye locations
     private int learnFrames = 0;
 
     // templates we create for left and right eye
@@ -60,9 +60,19 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
     public double xEyeCenter = -1;
     public double yEyeCenter = -1;
 
+    private double[] xEyeCenterAve;
+    private double[] yEyeCenterAve;
+    private int averageI;
+
     private Context context;
 
     private final int cameraID;
+
+    // coordinates of the screen corners
+    private double[][] offsets;
+
+    // boolean to tell the activity to send a bluetooth signal
+    private boolean sendBT;
 
     public EyeDetection(Context context, CameraBridgeViewBase mOpenCvCameraView, int cameraID) {
         this.context = context;
@@ -74,6 +84,10 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
         method = TM_CCOEFF_NORMED;
 
         this.cameraID = cameraID;
+
+        this.averageI = 0;
+        this.xEyeCenterAve = new double[10];
+        this.yEyeCenterAve = new double[10];
 
         // set the face size to 40% of normal (determined from testing, good size)
         setFaceSize(0.4f);
@@ -163,10 +177,7 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                         e.printStackTrace();
                     }
 
-                    // Initialize IR camera - You need to have JavaCamera2View to do this
-                    /*TODO - add button to change between IR and Normal camera. We have increased
-                     * resolution with the regular cameras which may prove better in testing
-                     */
+                    // Initialize IR camera - You need to have JavaCamera2View for IR
                     mOpenCvCameraView.setCameraIndex(cameraID);
                     mOpenCvCameraView.enableView();
                     break;
@@ -304,6 +315,78 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
         xEyeCenter = matchLoc.x + area.x + (mTemplate.cols() / 2);
         yEyeCenter = matchLoc.y + area.y + (mTemplate.rows() / 2);
 
+        // determine the cursor location from eye locations, axes are flipped!
+        if (offsets != null) {
+            if (averageI == 10) {
+                double averageEyePositionX = 0;
+                double averageEyePositionY = 0;
+
+                for (int i = 0; i < 10; i++) {
+                    averageEyePositionX += xEyeCenterAve[i];
+                    averageEyePositionY += yEyeCenterAve[i];
+                }
+
+                // average over 10 trials
+                averageEyePositionX /= 10;
+                averageEyePositionY /= 10;
+
+                // flip the x axis and shift
+                averageEyePositionX = -averageEyePositionX + 100;
+
+                double[] resultPoint = new double[]{0,0};
+
+                // flip the x axis and shift
+                double x0 = -offsets[0][0] + 100;
+                double y0 = offsets[0][1];
+                double x1 = -offsets[1][0] + 100;
+                double y1 = offsets[1][1];
+                double x2 = -offsets[3][0] + 100;
+                double y2 = offsets[3][1];
+                double x3 = -offsets[2][0] + 100;
+                double y3 = offsets[2][1];
+
+                double dx1 = x1 - x2;
+                double dx2 = x3 - x2;
+                double dx3 = x0 - x1 + x2 - x3;
+                double dy1 = y1 - y2;
+                double dy2 = y3 - y2;
+                double dy3 = y0 - y1 + y2 - y3;
+
+                double a13 = (dx3 * dy2 - dy3 * dx2) / (dx1 * dy2 - dy1 * dx2);
+                double a23 = (dx1 * dy3 - dy1 * dx3) / (dx1 * dy2 - dy1 * dx2);
+                double a11 = x1 - x0 + a13 * x1;
+                double a21 = x3 - x0 + a23 * x3;
+                double a31 = x0;
+                double a12 = y1 - y0 + a13 * y1;
+                double a22 = y3 - y0 + a23 * y3;
+                double a32 = y0;
+
+                double[][] transformMatrix = new double[][]{
+                    {a11, a12, a13},
+                    {a21, a22, a23},
+                    {a31, a32, 1.0}
+                };
+
+                // Find the inverse of the matrix
+                double[][] inv = matInverse(transformMatrix);
+
+                double[][] pointMatrix = new double[][]{{averageEyePositionX, averageEyePositionY, 1}};
+
+                double[][] resultMatrix = multiplyMatrices(pointMatrix, inv);
+
+                resultPoint[0] = resultMatrix[0][0] / resultMatrix[0][2] * 1920;
+                resultPoint[1] = resultMatrix[0][1] / resultMatrix[0][2] * 1080;
+
+                Log.i("CursorPosition", "X = " + resultPoint[0] + " Y = " + resultPoint[1]);
+
+                averageI = 0;
+            } else {
+                xEyeCenterAve[averageI] = xEyeCenter - xCenter;
+                yEyeCenterAve[averageI] = yCenter - yEyeCenter;
+                averageI++;
+            }
+        }
+
         // get the two corners of the pupil
         Point matchLoc_tx = new Point(matchLoc.x + area.x, matchLoc.y + area.y);
         Point matchLoc_ty = new Point(matchLoc.x + mTemplate.cols() + area.x,
@@ -313,14 +396,12 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
         Imgproc.rectangle(mRGB, matchLoc_tx, matchLoc_ty, new Scalar(255, 0, 0, 255));
 
         /*
-
         Rest in peace PCCR and Hough Circle detection. The resolution of the pixel 4 IR camera is
         way too low to get a solid image. We can accurately detect pupils with this, however.
 
         // compute precise pupil and CR locations
         Mat houghResult = new Mat();
 
-        // TODO - tweak the numerical parameters
         Imgproc.HoughCircles(mROI, houghResult, Imgproc.CV_HOUGH_GRADIENT, 1, 1, 80, 10, 1, 5);
 
         if (houghResult.cols() > 0) {
@@ -339,6 +420,40 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
             }
         }
         */
+    }
+
+    private double[][] matInverse(double[][] mat) {
+        int i, j;
+        double det = 0;
+        for(i = 0; i < 3; i++)
+            det = det + (mat[0][i] * (mat[1][(i+1)%3] * mat[2][(i+2)%3] - mat[1][(i+2)%3] * mat[2][(i+1)%3]));
+        double[][] ret = new double[3][3];
+
+        for(i = 0; i < 3; ++i) {
+            for(j = 0; j < 3; ++j)
+                ret[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3]))/ det;
+        }
+        return ret;
+    }
+
+    private double[][] multiplyMatrices(double[][] firstMatrix, double[][] secondMatrix) {
+        double[][] result = new double[firstMatrix.length][secondMatrix[0].length];
+
+        for (int row = 0; row < result.length; row++) {
+            for (int col = 0; col < result[row].length; col++) {
+                result[row][col] = multiplyMatricesCell(firstMatrix, secondMatrix, row, col);
+            }
+        }
+
+        return result;
+    }
+
+    private double multiplyMatricesCell(double[][] firstMatrix, double[][] secondMatrix, int row, int col) {
+        double cell = 0;
+        for (int i = 0; i < secondMatrix.length; i++) {
+            cell += firstMatrix[row][i] * secondMatrix[i][col];
+        }
+        return cell;
     }
 
     /* How we learn the data for left and right eye based on javaDetector2 */
@@ -386,5 +501,14 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
     public void relearnFace(View v)
     {
         learnFrames = 0;
+    }
+
+    public double[][] getOffsets() {
+        return offsets;
+    }
+
+    public void setOffsets(double[][] offsets) {
+        this.offsets = offsets;
+        this.sendBT = true;
     }
 }
