@@ -18,6 +18,8 @@ import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 
+import java.util.concurrent.Executor;
+
 public class MainActivity extends AppCompatActivity {
 
     public EyeDetection eyeDetect;
@@ -30,6 +32,19 @@ public class MainActivity extends AppCompatActivity {
     private JavaCamera2View irCamera;
 
     private int cameraID;
+
+    private MessageSender messageSender;
+
+    public class NewDataCallback implements Runnable {
+        public int x, y;
+
+        @Override
+        public void run() {
+            messageSender.sendMouse(x, y);
+        }
+    }
+
+    private NewDataCallback cb = new NewDataCallback();
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -61,13 +76,13 @@ public class MainActivity extends AppCompatActivity {
         if (extras != null) {
             this.cameraID = (int) extras.get("cameraID");
             if (this.cameraID == 1)
-                eyeDetect = new EyeDetection(this, normalCamera, this.cameraID);
+                eyeDetect = new EyeDetection(this, normalCamera, this.cameraID, cb);
             else
-                eyeDetect = new EyeDetection(this, irCamera, this.cameraID);
+                eyeDetect = new EyeDetection(this, irCamera, this.cameraID, cb);
             // send over the coordinates of corners
             eyeDetect.setOffsets((double[][]) extras.get("offsets"));
         } else // always default to IR camera
-            eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2);
+            eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2, cb); // Normalcamera, 1
 
         if (this.cameraID == 2) {
             switchNormButton.setVisibility(View.VISIBLE);
@@ -76,6 +91,9 @@ public class MainActivity extends AppCompatActivity {
             switchNormButton.setVisibility(View.INVISIBLE);
             switchIRButton.setVisibility(View.VISIBLE);
         }
+
+        // Open TCP socket connection
+        messageSender = new MessageSender("192.168.43.166");
     }
 
     @Override
@@ -102,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         if (eyeDetect.mOpenCvCameraView != null)
             eyeDetect.mOpenCvCameraView.disableView();
+        messageSender.destroy();
     }
 
     public void calibrateGaze(View view) {

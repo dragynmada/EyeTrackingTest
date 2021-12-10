@@ -71,11 +71,18 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
     // coordinates of the screen corners
     private double[][] offsets;
 
+    private int mouse_x;
+    private int mouse_y;
+
     // boolean to tell the activity to send a bluetooth signal
     private boolean sendBT;
 
-    public EyeDetection(Context context, CameraBridgeViewBase mOpenCvCameraView, int cameraID) {
+    private MainActivity.NewDataCallback newDataCallback;
+
+    public EyeDetection(Context context, CameraBridgeViewBase mOpenCvCameraView, int cameraID, MainActivity.NewDataCallback newDataCallback) {
         this.context = context;
+
+        this.newDataCallback = newDataCallback;
 
         // get the OpenCV camera view
         this.mOpenCvCameraView = mOpenCvCameraView;
@@ -388,6 +395,14 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                     resultPoint[1] = 1080;
 
                 Log.i("CursorPosition", "X = " + resultPoint[0] + " Y = " + resultPoint[1]);
+                mouse_x = (int) resultPoint[0];
+                mouse_y = (int) resultPoint[1];
+
+                if (this.newDataCallback != null) {
+                    this.newDataCallback.x = mouse_x;
+                    this.newDataCallback.y = mouse_y;
+                    this.newDataCallback.run();
+                }
 
                 averageI = 0;
             } else {
@@ -520,5 +535,13 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
     public void setOffsets(double[][] offsets) {
         this.offsets = offsets;
         this.sendBT = true;
+    }
+
+    public int getMouse_x() {
+        return mouse_x;
+    }
+
+    public int getMouse_y() {
+        return mouse_y;
     }
 }
