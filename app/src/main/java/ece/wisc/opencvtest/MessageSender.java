@@ -22,7 +22,6 @@ public class MessageSender {
 
     public MessageSender(String address) {
         connection_address = address;
-
         new Thread(OpenSocketConnection).start();
     }
 
@@ -42,7 +41,7 @@ public class MessageSender {
         @Override
         public void run() {
             try {
-                sock = new Socket("192.168.43.166", 7800);
+                sock = new Socket(connection_address, 7800);
                 pw = new PrintWriter(sock.getOutputStream());
             }
             catch (IOException e) {

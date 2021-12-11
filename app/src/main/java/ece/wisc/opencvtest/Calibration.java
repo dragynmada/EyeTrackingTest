@@ -59,10 +59,10 @@ public class Calibration extends AppCompatActivity {
             this.cameraID = (int) extras.get("cameraID");
             if (cameraID == 2) {
                 eyeDetection = new EyeDetection(this,
-                        findViewById(R.id.calViewNorm), cameraID, null);
+                        findViewById(R.id.calViewNorm), cameraID);
             } else {
                 eyeDetection = new EyeDetection(this,
-                        findViewById(R.id.calViewIR), cameraID, null);
+                        findViewById(R.id.calViewIR), cameraID);
             }
         }
 
