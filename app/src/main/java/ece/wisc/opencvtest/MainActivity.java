@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Open TCP socket connection
-        messageSender = new MessageSender("192.168.43.166");
+        messageSender = new MessageSender("192.168.56.1");
     }
 
     @Override
@@ -107,13 +107,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-        if (!OpenCVLoader.initDebug())
+        if (!OpenCVLoader.initDebug()) {
             // statically link the package manager and the callback - previously done by Google Play
             // but now we need to handle it to account for OpenCV3 vs OpenCV4
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this,
                     eyeDetect.mLoaderCallback);
-        else
+        } else {
             eyeDetect.mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
     }
 
     public void onDestroy() {
