@@ -3,6 +3,9 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Madison Classes/AndroidStudio_workspace/EyeTrackingTest/app/src/main/res/layout/activity_main.xml" value="0.11322188449848024" />
+        <entry key="..\:/Madison Classes/AndroidStudio_workspace/EyeTrackingTest/app/src/main/res/layout/calibration_page.xml" value="0.11322188449848024" />
+        <entry key="..\:/Madison Classes/AndroidStudio_workspace/EyeTrackingTest/app/src/main/res/layout/input_ipv4_popup.xml" value="0.11322188449848024" />
         <entry key="..\:/Users/Matthew Beyer/AndroidStudioProjects/EyeTrackingTest/app/src/main/res/layout/activity_main.xml" value="0.1118659420289855" />
         <entry key="..\:/Users/Matthew Beyer/AndroidStudioProjects/EyeTrackingTest/app/src/main/res/layout/calibration_page.xml" value="0.21481481481481482" />
         <entry key="..\:/Users/Matthew Beyer/AndroidStudioProjects/EyeTrackingTest/app/src/main/res/layout/face_detect_surface_view.xml" value="0.21481481481481482" />
@@ -13,7 +16,7 @@
       </map>
     </option>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="Android Studio default JDK" project-jdk-type="JavaSDK">
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="JDK" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/build/classes" />
   </component>
   <component name="ProjectType">

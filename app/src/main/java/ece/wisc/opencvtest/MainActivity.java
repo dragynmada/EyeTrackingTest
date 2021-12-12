@@ -4,14 +4,23 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 
 import org.opencv.android.JavaCamera2View;
 import org.opencv.android.JavaCameraView;
@@ -34,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private int cameraID;
 
     private MessageSender messageSender;
+    private String ipAddress;
 
     public class NewDataCallback implements Runnable {
         public int x, y;
@@ -72,6 +82,47 @@ public class MainActivity extends AppCompatActivity {
 
         this.cameraID = 2;
 
+
+        // pop up for user to input HOST (IPv4) Address
+        if (ipAddress == null || ipAddress.length() == 0)
+            thing();
+
+        setupEyeDetectionUnit();
+
+    }
+
+    private void thing() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Title");
+
+        // Set up the input
+        final EditText input = new EditText(this);
+        // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        builder.setView(input);
+
+        // Set up the buttons
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                ipAddress = input.getText().toString();
+
+                // Open TCP socket connection
+                // Use your IPv4 (gather from cmd console ipconfig)
+                messageSender = new MessageSender(ipAddress);
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
+    }
+
+    private void setupEyeDetectionUnit() {
         Bundle extras = getIntent().getExtras();
         if (extras != null) {
             this.cameraID = (int) extras.get("cameraID");
@@ -83,9 +134,6 @@ public class MainActivity extends AppCompatActivity {
             eyeDetect.setOffsets((double[][]) extras.get("offsets"));
             // Configure the callback
             eyeDetect.setNewDataCallback(cb);
-            // Open TCP socket connection
-            // Use your IPv4 (gather from cmd console ipconfig)
-            messageSender = new MessageSender("");
         } else {// always default to IR camera
             eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2); // Normalcamera, 1
         }
@@ -161,5 +209,32 @@ public class MainActivity extends AppCompatActivity {
         eyeDetect.mOpenCvCameraView.setCameraIndex(1);
         eyeDetect.mOpenCvCameraView.enableView();
         cameraID = 1;
+    }
+
+    public void onButtonShowPopupWindowClick(View view) {
+
+        // inflate the layout of the popup window
+        LayoutInflater inflater = (LayoutInflater)
+                getSystemService(LAYOUT_INFLATER_SERVICE);
+        View popupView = inflater.inflate(R.layout.input_ipv4_popup, null);
+
+        // create the popup window
+        int width = LinearLayout.LayoutParams.WRAP_CONTENT;
+        int height = LinearLayout.LayoutParams.WRAP_CONTENT;
+        boolean focusable = true; // lets taps outside the popup also dismiss it
+        final PopupWindow popupWindow = new PopupWindow(popupView, width, height, focusable);
+
+        // show the popup window
+        // which view you pass in doesn't matter, it is only used for the window tolken
+        popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0);
+
+        // dismiss the popup window when touched
+        popupView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                popupWindow.dismiss();
+                return true;
+            }
+        });
     }
 }
