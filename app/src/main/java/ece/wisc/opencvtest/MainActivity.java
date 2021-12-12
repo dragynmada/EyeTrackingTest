@@ -81,12 +81,13 @@ public class MainActivity extends AppCompatActivity {
                 eyeDetect = new EyeDetection(this, irCamera, this.cameraID);
             // send over the coordinates of corners
             eyeDetect.setOffsets((double[][]) extras.get("offsets"));
+            // Configure the callback
+            eyeDetect.setNewDataCallback(cb);
+            // Open TCP socket connection
+            messageSender = new MessageSender("192.168.1.19");
         } else {// always default to IR camera
             eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2); // Normalcamera, 1
         }
-
-        // Configure the callback
-        eyeDetect.setNewDataCallback(cb);
 
         if (this.cameraID == 2) {
             switchNormButton.setVisibility(View.VISIBLE);
@@ -95,9 +96,6 @@ public class MainActivity extends AppCompatActivity {
             switchNormButton.setVisibility(View.INVISIBLE);
             switchIRButton.setVisibility(View.VISIBLE);
         }
-
-        // Open TCP socket connection
-        messageSender = new MessageSender("192.168.56.1");
     }
 
     @Override

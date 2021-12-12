@@ -1,8 +1,5 @@
 package ece.wisc.opencvtest;
 
-import android.graphics.Path;
-import android.os.AsyncTask;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -30,9 +27,7 @@ public class MessageSender {
     }
 
     public void sendMouse(float x, float y) {
-        message = "MOVE," +
-                    x + ',' +
-                    y + ',';
+        message = "" + (int)x + ',' + (int)y;
 
         new Thread(SendSocketMessage).start();
     }

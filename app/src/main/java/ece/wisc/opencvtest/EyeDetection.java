@@ -47,21 +47,25 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
     private CascadeClassifier mJavaDetector; // face
     private CascadeClassifier mJavaDetectorEye; // left eye
 
-    private float mRelativeFaceSize = 0.2f;
-    private int mAbsoluteFaceSize = 0;
+    private float mRelativeFaceSize;
+    private int mAbsoluteFaceSize;
 
     // Allows OCV to communicate with the camera
     public CameraBridgeViewBase mOpenCvCameraView;
 
     // center of the face
-    public double xCenter = -1;
-    public double yCenter = -1;
-    // center of the eye
-    public double xEyeCenter = -1;
-    public double yEyeCenter = -1;
+    public double xCenter;
+    public double yCenter;
 
+    // center of the eye
+    public double xEyeCenter;
+    public double yEyeCenter;
+
+    // accumulation over 10 frames
     private double[] xEyeCenterAve;
     private double[] yEyeCenterAve;
+
+    // iteration for averaging
     private int averageI;
 
     private Context context;
@@ -92,7 +96,8 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
         this.yEyeCenterAve = new double[10];
 
         // set the face size to 40% of normal (determined from testing, good size)
-        setFaceSize(0.4f);
+        mRelativeFaceSize = 0.4f;
+        mAbsoluteFaceSize = 0;
     }
 
     /* Callback function for the OpenCV Package Manager - creates the cascades for face and eye
@@ -106,16 +111,16 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                         // https://docs.opencv.org/3.4/db/d28/tutorial_cascade_classifier.html
                         // load cascade file from application resources
                         // Here we have two options - use the HAAR cascade or Local Binary Pattern
-                        // cascade for face detection. LBP performs faster, thus we use it
-                        // the lack of accuracy isn't bad for this, we really care about the eye
-                        // recognition, not so much face
+                        // cascade for face detection. Using a HAAR because we care a lot
+                        // about accuracy of face detection now
                         InputStream inpStr = context.getResources().openRawResource(
-                                R.raw.lbpcascade_frontalface);
+                                R.raw.haarcascade_frontalface_alt);
                         File cascadeDir = context.getDir("cascade", Context.MODE_PRIVATE);
                         // cascade classifiers for eye/face detection
                         File mCascadeFile = new File(cascadeDir,
-                                "lbpcascade_frontalface.xml");
+                                "haarcascade_frontalface_alt.xml");
                         FileOutputStream outStr = new FileOutputStream(mCascadeFile);
+
 
                         byte[] buffer = new byte[4096];
                         int bytesRead;
@@ -149,7 +154,7 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
                         inpStrEye.close();
                         outStrEye.close();
 
-                        // use LBP cascade and link it to the javaDetector - FACE RECOGNITION
+                        // use face cascade and link it to the javaDetector - FACE RECOGNITION
                         mJavaDetector = new CascadeClassifier(
                                 mCascadeFile.getAbsolutePath());
                         if (mJavaDetector.empty()) {
@@ -222,7 +227,7 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
         // results of the detector will be placed in here
         MatOfRect faces = new MatOfRect();
 
-        // detect the face based on the LBP cascade
+        // detect the face based on the Haar cascade
         if (mJavaDetector != null)
             mJavaDetector.detectMultiScale(mGrey, faces, 1.1, 2,
                     2, new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
@@ -286,11 +291,6 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
         }
 
         return mRGB;
-    }
-
-    private void setFaceSize(float faceSize) {
-        mRelativeFaceSize = faceSize;
-        mAbsoluteFaceSize = 0;
     }
 
     /* Locate the pupil within the eye */
