@@ -531,14 +531,6 @@ public class EyeDetection implements CameraBridgeViewBase.CvCameraViewListener2 
         this.offsets = offsets;
     }
 
-    public int getMouse_x() {
-        return mouse_x;
-    }
-
-    public int getMouse_y() {
-        return mouse_y;
-    }
-
     public MainActivity.NewDataCallback getNewDataCallback() {
         return newDataCallback;
     }

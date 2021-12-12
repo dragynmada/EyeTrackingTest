@@ -84,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
             // Configure the callback
             eyeDetect.setNewDataCallback(cb);
             // Open TCP socket connection
+            // Use your IPv4 (gather from cmd console ipconfig)
             messageSender = new MessageSender("");
         } else {// always default to IR camera
             eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2); // Normalcamera, 1
