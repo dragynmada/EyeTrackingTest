@@ -18,6 +18,8 @@ import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 
+import java.util.concurrent.Executor;
+
 public class MainActivity extends AppCompatActivity {
 
     public EyeDetection eyeDetect;
@@ -30,6 +32,19 @@ public class MainActivity extends AppCompatActivity {
     private JavaCamera2View irCamera;
 
     private int cameraID;
+
+    private MessageSender messageSender;
+
+    public class NewDataCallback implements Runnable {
+        public int x, y;
+
+        @Override
+        public void run() {
+            messageSender.sendMouse(x, y);
+        }
+    }
+
+    private NewDataCallback cb = new NewDataCallback();
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -66,8 +81,14 @@ public class MainActivity extends AppCompatActivity {
                 eyeDetect = new EyeDetection(this, irCamera, this.cameraID);
             // send over the coordinates of corners
             eyeDetect.setOffsets((double[][]) extras.get("offsets"));
-        } else // always default to IR camera
-            eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2);
+            // Configure the callback
+            eyeDetect.setNewDataCallback(cb);
+            // Open TCP socket connection
+            // Use your IPv4 (gather from cmd console ipconfig)
+            messageSender = new MessageSender("");
+        } else {// always default to IR camera
+            eyeDetect = new EyeDetection(MainActivity.this, irCamera, 2); // Normalcamera, 1
+        }
 
         if (this.cameraID == 2) {
             switchNormButton.setVisibility(View.VISIBLE);
@@ -89,19 +110,21 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-        if (!OpenCVLoader.initDebug())
+        if (!OpenCVLoader.initDebug()) {
             // statically link the package manager and the callback - previously done by Google Play
             // but now we need to handle it to account for OpenCV3 vs OpenCV4
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this,
                     eyeDetect.mLoaderCallback);
-        else
+        } else {
             eyeDetect.mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
     }
 
     public void onDestroy() {
         super.onDestroy();
         if (eyeDetect.mOpenCvCameraView != null)
             eyeDetect.mOpenCvCameraView.disableView();
+        messageSender.destroy();
     }
 
     public void calibrateGaze(View view) {
